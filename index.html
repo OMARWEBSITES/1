@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=0.6">
+    <title>مواضيعي</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+            padding: 20px;
+        }
+        .container {
+            background-color: #1e1e1e;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            max-width: 600px;
+            width: 100%;
+            position: relative;
+        }
+        h1 {
+            color: #fca311;
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+        p#topic {
+            font-size: 22px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #e5e5e5;
+        }
+        button.main-btn {
+            background-color: #fca311;
+            color: #121212;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+            font-family: 'Cairo', sans-serif;
+        }
+        button.main-btn:hover {
+            background-color: #e58e00;
+            transform: scale(1.05);
+        }
+        button.main-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .counter {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #888;
+        }
+        .counter span {
+            color: #fca311;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+        .modal-content {
+            background-color: #1e1e1e;
+            padding: 30px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 450px;
+            border: 1px solid #fca311;
+            box-shadow: 0 10px 40px rgba(252, 163, 17, 0.2);
+        }
+        .modal-content h2 {
+            color: #fca311;
+            margin-top: 0;
+            font-size: 22px;
+        }
+        .modal-content input, .modal-content textarea {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            border: 1px solid #444;
+            background-color: #2a2a2a;
+            color: #fff;
+            font-family: 'Cairo', sans-serif;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        .modal-content textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        .modal-content button {
+            background-color: #fca311;
+            color: #121212;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'Cairo', sans-serif;
+            width: 100%;
+            margin-bottom: 10px;
+            transition: opacity 0.2s;
+        }
+        .modal-content button:hover {
+            opacity: 0.9;
+        }
+        
+        /* تنسيقات الزراير الجديدة للداش بورد */
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .btn-group button {
+            margin-bottom: 0;
+            flex: 1;
+        }
+        .btn-blue { background-color: #0d6efd !important; color: white !important; }
+        .btn-green { background-color: #198754 !important; color: white !important; }
+        .btn-red { background-color: #dc3545 !important; color: white !important; margin-top: 5px; }
+        .close-btn { background-color: #444 !important; color: #fff !important; }
+
+    </style>
+
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <link rel="manifest" href="./manifest.json?v=v1790869050033">
+    <meta name="theme-color" content="#83af84">
+    <link rel="apple-touch-icon" href="./icon-192.png?v=v1790869050033">
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js?v=v1790869050033')
+            .then(reg => console.log('SW Registered'))
+            .catch(err => console.log('SW Failed', err));
+        });
+      }
+    </script>
+</head>
+<body>
+
+    <!-- الواجهة الرئيسية -->
+    <div class="container">
+        <h1>هنتكلم في إيه دلوقتي؟ 🤔</h1>
+        <p id="topic">بيحمل الأسئلة من السيرفر، ثواني...</p>
+        <button id="generateBtn" class="main-btn">هات موضوع جديد</button>
+        <div class="counter">عدد المواضيع المتاحة: <span id="questionsCount">0</span></div>
+    </div>
+
+    <!-- شاشة إدخال الباسورد -->
+    <div id="authModal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>تسجيل الدخول للوحة التحكم 🔒</h2>
+            <input type="password" id="adminPassword" placeholder="دخل الباسورد هنا...">
+            <button id="checkPassBtn">دخول</button>
+            <button id="closeAuthBtn" class="close-btn">إلغاء</button>
+        </div>
+    </div>
+
+    <!-- الداش بورد كاملة بكل زرايرها -->
+    <div id="dashboardModal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>إضافة سؤال جديد ✍️</h2>
+            <textarea id="newQuestion" placeholder="اكتب الموضوع هنا (لو أكتر من سؤال حط كل سؤال في سطر لوحده)..."></textarea>
+            
+            <button id="addTopicBtn">ضيف السؤال للسيرفر</button>
+
+            <!-- الزراير الجديدة اللي متفعلة وجاهزة -->
+            <div class="btn-group">
+                <button id="importBtn" class="btn-blue">استيراد (JSON) 📤</button>
+                <button id="exportBtn" class="btn-green">تصدير الكل (JSON) 📥</button>
+            </div>
+            
+            <!-- زرار مخفي عشان ترفع منه ملف الـ JSON -->
+            <input type="file" id="fileInput" accept=".json" style="display: none;">
+
+            <button id="deleteAllBtn" class="btn-red">مسح كل الأسئلة 🗑️</button>
+            <button id="closeDashBtn" class="close-btn">قفل الداش بورد</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-analytics.js";
+        import { getDatabase, ref, onValue, push, remove } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBjYApn4YfmPbkmpY775AzasCGFUHI-WNo",
+            authDomain: "four-af817.firebaseapp.com",
+            databaseURL: "https://four-af817-default-rtdb.firebaseio.com",
+            projectId: "four-af817",
+            storageBucket: "four-af817.firebasestorage.app",
+            messagingSenderId: "269912903759",
+            appId: "1:269912903759:web:8ef71a1d9e09b3b85c9a3a",
+            measurementId: "G-Y3WMKR7HWX"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const db = getDatabase(app);
+
+        let topicsArray = [];
+
+        // 1. جلب البيانات تلقائياً
+        const dbRef = ref(db, 'topics');
+        onValue(dbRef, (snapshot) => {
+            const data = snapshot.val();
+            topicsArray = [];
+            
+            if (data) {
+                for (let key in data) {
+                    topicsArray.push(data[key].text);
+                }
+                document.getElementById('topic').innerText = "الأسئلة جاهزة.. دوس على الزرار اللي تحت عشان نبدأ!";
+            } else {
+                document.getElementById('topic').innerText = "قاعدة البيانات فاضية، افتح الداش بورد وضيف أسئلة!";
+            }
+            document.getElementById('questionsCount').innerText = topicsArray.length;
+        }, (error) => {
+            document.getElementById('topic').innerText = "حصلت مشكلة في الاتصال بالسيرفر!";
+            console.error(error);
+        });
+
+        // 2. اختيار سؤال عشوائي
+        document.getElementById('generateBtn').addEventListener('click', () => {
+            if (topicsArray.length === 0) {
+                alert("مفيش أسئلة لسه متضافة! دوس Esc وضيف أسئلة الأول.");
+                return;
+            }
+            const randomIndex = Math.floor(Math.random() * topicsArray.length);
+            document.getElementById('topic').innerText = topicsArray[randomIndex];
+        });
+
+        // 3. فتح الباسورد بـ Esc
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.getElementById('authModal').style.display = 'flex';
+                document.getElementById('adminPassword').focus();
+            }
+        });
+
+        // 4. التحقق من الباسورد (#ZMsd42d*)
+        document.getElementById('checkPassBtn').addEventListener('click', () => {
+            const passInput = document.getElementById('adminPassword').value;
+            if (btoa(passInput) === "I1pNc2Q0MmQq") {
+                document.getElementById('authModal').style.display = 'none';
+                document.getElementById('dashboardModal').style.display = 'flex';
+                document.getElementById('adminPassword').value = ''; 
+                document.getElementById('newQuestion').focus();
+            } else {
+                alert("الباسورد غلط يا غالي!");
+            }
+        });
+
+        document.getElementById('adminPassword').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                document.getElementById('checkPassBtn').click();
+            }
+        });
+
+        // 5. حل المشكلة: إضافة الأسئلة وفصلها كل سؤال لوحده
+        document.getElementById('addTopicBtn').addEventListener('click', () => {
+            const newTopicText = document.getElementById('newQuestion').value;
+            
+            if (newTopicText.trim() === '') {
+                alert("اكتب السؤال الأول متسيبهاش فاضية!");
+                return;
+            }
+
+            // هنا الكود بيقسم النص المنسوخ لأسئلة منفصلة بناءً على السطور (زرار الإنتر)
+            const lines = newTopicText.split(/\r?\n/);
+            let addedCount = 0;
+
+            lines.forEach(line => {
+                const cleanLine = line.trim();
+                // بنتأكد إن السطر مش فاضي
+                if (cleanLine !== '') {
+                    push(ref(db, 'topics'), {
+                        text: cleanLine
+                    });
+                    addedCount++;
+                }
+            });
+
+            if (addedCount > 0) {
+                alert("تمت الإضافة بنجاح! (" + addedCount + " سؤال)");
+                document.getElementById('newQuestion').value = ''; 
+            }
+        });
+
+        // 6. تفعيل زرار تصدير الكل (JSON)
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            if (topicsArray.length === 0) {
+                alert("مفيش أسئلة في السيرفر عشان تصدرها!");
+                return;
+            }
+            // بنحول الأسئلة لصيغة JSON وننزلها كملف
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(topicsArray));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "clubhouse_questions.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        });
+
+        // 7. تفعيل زرار استيراد (JSON)
+        document.getElementById('importBtn').addEventListener('click', () => {
+            document.getElementById('fileInput').click(); // بيفتح شاشة اختيار الملف
+        });
+
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const importedQuestions = JSON.parse(event.target.result);
+                    if (Array.isArray(importedQuestions)) {
+                        let count = 0;
+                        importedQuestions.forEach(q => {
+                            if (typeof q === 'string' && q.trim() !== '') {
+                                push(ref(db, 'topics'), { text: q.trim() });
+                                count++;
+                            }
+                        });
+                        alert("تم استيراد " + count + " سؤال بنجاح للسيرفر!");
+                    } else {
+                        alert("الملف ده مش متوافق أو مش بصيغة JSON مظبوطة!");
+                    }
+                } catch(err) {
+                    alert("حصل خطأ! اتأكد إن الملف اللي اخترته سليم.");
+                }
+            };
+            reader.readAsText(file);
+            e.target.value = ''; // بنفضي الخانة عشان لو حبيت تستورد نفس الملف تاني
+        });
+
+        // 8. تفعيل زرار مسح كل الأسئلة
+        document.getElementById('deleteAllBtn').addEventListener('click', () => {
+            // بنعمل رسالة تأكيد عشان متتمسحش بالغلط
+            if (confirm("أنت متأكد إنك عايز تمسح كل الأسئلة من السيرفر نهائياً؟")) {
+                remove(ref(db, 'topics')).then(() => {
+                    alert("تم مسح كل الأسئلة بنجاح!");
+                }).catch((error) => {
+                    alert("حصلت مشكلة في المسح: " + error.message);
+                });
+            }
+        });
+
+        // 9. زراير القفل
+        document.getElementById('closeAuthBtn').addEventListener('click', () => {
+            document.getElementById('authModal').style.display = 'none';
+            document.getElementById('adminPassword').value = '';
+        });
+
+        document.getElementById('closeDashBtn').addEventListener('click', () => {
+            document.getElementById('dashboardModal').style.display = 'none';
+        });
+
+    </script>
+</body>
+</html>
