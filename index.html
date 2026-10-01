@@ -17,6 +17,8 @@
             margin: 0;
             text-align: center;
             padding: 20px;
+            /* منع تحديد النص عند الضغط المتكرر بالشاشة */
+            user-select: none; 
         }
         .container {
             background-color: #1e1e1e;
@@ -53,6 +55,8 @@
             cursor: pointer;
             transition: background-color 0.3s, transform 0.2s;
             font-family: 'Cairo', sans-serif;
+            position: relative;
+            z-index: 10;
         }
         button.main-btn:hover {
             background-color: #e58e00;
@@ -73,6 +77,54 @@
             font-size: 16px;
         }
 
+        /* زر وتنسيقات الأسئلة السابقة */
+        .history-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #2a2a2a;
+            color: #fca311;
+            border: 1px solid #fca311;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Cairo', sans-serif;
+            transition: all 0.3s;
+            z-index: 100;
+            font-weight: bold;
+        }
+        .history-btn:hover {
+            background-color: #fca311;
+            color: #121212;
+        }
+        .history-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 20px 0;
+            max-height: 300px;
+            overflow-y: auto;
+            text-align: right;
+            border: 1px solid #444;
+            border-radius: 8px;
+            background-color: #121212;
+        }
+        .history-list li {
+            padding: 12px;
+            border-bottom: 1px solid #333;
+            color: #fff;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        .history-list li:last-child {
+            border-bottom: none;
+        }
+        .history-list li span.num {
+            color: #fca311;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+
         .modal-overlay {
             display: none;
             position: fixed;
@@ -91,6 +143,8 @@
             max-width: 450px;
             border: 1px solid #fca311;
             box-shadow: 0 10px 40px rgba(252, 163, 17, 0.2);
+            /* السماح بتحديد النص داخل النوافذ المنبثقة */
+            user-select: text;
         }
         .modal-content h2 {
             color: #fca311;
@@ -146,6 +200,17 @@
         .btn-red { background-color: #dc3545 !important; color: white !important; margin-top: 5px; }
         .close-btn { background-color: #444 !important; color: #fff !important; }
 
+        /* تعديل شكل شريط التمرير (Scrollbar) في قائمة الأسئلة السابقة */
+        .history-list::-webkit-scrollbar {
+            width: 8px;
+        }
+        .history-list::-webkit-scrollbar-track {
+            background: #121212;
+        }
+        .history-list::-webkit-scrollbar-thumb {
+            background-color: #fca311;
+            border-radius: 10px;
+        }
     </style>
 
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -163,15 +228,45 @@
         });
       }
     </script>
+
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <link rel="manifest" href="./manifest.json?v=v1790892614873">
+    <meta name="theme-color" content="#8f7cb6">
+    <link rel="apple-touch-icon" href="./icon-192.png?v=v1790892614873">
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js?v=v1790892614873')
+            .then(reg => console.log('SW Registered'))
+            .catch(err => console.log('SW Failed', err));
+        });
+      }
+    </script>
 </head>
 <body>
 
     <!-- الواجهة الرئيسية -->
-    <div class="container">
+    <div class="container" id="mainContainer">
         <h1>هنتكلم في إيه دلوقتي؟ 🤔</h1>
         <p id="topic">بيحمل الأسئلة من السيرفر، ثواني...</p>
         <button id="generateBtn" class="main-btn">هات موضوع جديد</button>
         <div class="counter">عدد المواضيع المتاحة: <span id="questionsCount">0</span></div>
+    </div>
+
+    <!-- زر عرض السجل (آخر 30 سؤال) -->
+    <button id="showHistoryBtn" class="history-btn">🕒 آخر 30 سؤال</button>
+
+    <!-- شاشة الأسئلة السابقة -->
+    <div id="historyModal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>📜 الأسئلة السابقة</h2>
+            <ul id="historyList" class="history-list">
+                <!-- هيتم إضافة الأسئلة هنا من الجافاسكريبت -->
+            </ul>
+            <button id="closeHistoryBtn" class="close-btn">قفل</button>
+        </div>
     </div>
 
     <!-- شاشة إدخال الباسورد -->
@@ -227,6 +322,7 @@
         const db = getDatabase(app);
 
         let topicsArray = [];
+        let historyArray = []; // مصفوفة لتخزين آخر 30 سؤال
 
         // 1. جلب البيانات تلقائياً
         const dbRef = ref(db, 'topics');
@@ -238,7 +334,9 @@
                 for (let key in data) {
                     topicsArray.push(data[key].text);
                 }
-                document.getElementById('topic').innerText = "الأسئلة جاهزة.. دوس على الزرار اللي تحت عشان نبدأ!";
+                if (document.getElementById('topic').innerText === "بيحمل الأسئلة من السيرفر، ثواني...") {
+                     document.getElementById('topic').innerText = "الأسئلة جاهزة.. دوس على أي مكان أو زرار عشان نبدأ!";
+                }
             } else {
                 document.getElementById('topic').innerText = "قاعدة البيانات فاضية، افتح الداش بورد وضيف أسئلة!";
             }
@@ -248,25 +346,92 @@
             console.error(error);
         });
 
-        // 2. اختيار سؤال عشوائي
-        document.getElementById('generateBtn').addEventListener('click', () => {
+        // دالة عرض سؤال جديد وتخزينه في السجل
+        function generateNewQuestion() {
             if (topicsArray.length === 0) {
                 alert("مفيش أسئلة لسه متضافة! دوس Esc وضيف أسئلة الأول.");
                 return;
             }
             const randomIndex = Math.floor(Math.random() * topicsArray.length);
-            document.getElementById('topic').innerText = topicsArray[randomIndex];
+            const newTopic = topicsArray[randomIndex];
+            
+            document.getElementById('topic').innerText = newTopic;
+
+            // إضافة السؤال للسجل (فقط لو مكانش هو نفسه آخر سؤال معروض تجنباً للتكرار)
+            if (historyArray[0] !== newTopic) {
+                historyArray.unshift(newTopic); // بيضيف السؤال في بداية المصفوفة
+                if (historyArray.length > 30) {
+                    historyArray.pop(); // بيمسح السؤال الأقدم لو العدد زاد عن 30
+                }
+            }
+        }
+
+        // 2. اختيار سؤال عشوائي من الزرار الرئيسي
+        document.getElementById('generateBtn').addEventListener('click', (e) => {
+            e.stopPropagation(); // عشان ميمنعش التفاعل مع ضغطة الشاشة
+            generateNewQuestion();
         });
 
-        // 3. فتح الباسورد بـ Esc
+        // 3. دعم الضغط على أي زرار في الكيبورد لتقليب الأسئلة أو (Esc) لفتح اللوحة
         window.addEventListener('keydown', (e) => {
+            // تجاهل الكيبورد لو المستخدم بيكتب جوه مربع نص أو باسورد
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
             if (e.key === 'Escape') {
                 document.getElementById('authModal').style.display = 'flex';
                 document.getElementById('adminPassword').focus();
+            } else {
+                // لو داس على أي زرار تاني والشاشات المنبثقة مقفولة يقلب السؤال
+                if (document.getElementById('authModal').style.display !== 'flex' && 
+                    document.getElementById('dashboardModal').style.display !== 'flex' &&
+                    document.getElementById('historyModal').style.display !== 'flex') {
+                    generateNewQuestion();
+                }
             }
         });
 
-        // 4. التحقق من الباسورد (#ZMsd42d*)
+        // 4. دعم الضغط في أي مكان في الشاشة لتقليب الأسئلة (للشاشات التاتش والماوس)
+        document.addEventListener('click', (e) => {
+            // لو أي نافذة منبثقة مفتوحة نمنع التقليب
+            if (document.getElementById('authModal').style.display === 'flex' || 
+                document.getElementById('dashboardModal').style.display === 'flex' ||
+                document.getElementById('historyModal').style.display === 'flex') {
+                return;
+            }
+
+            // لو داس على زرار السجل متقلبش السؤال عشان يفتح السجل براحته
+            if (e.target.id === 'showHistoryBtn') {
+                return;
+            }
+
+            // قلب السؤال
+            generateNewQuestion();
+        });
+
+        // 5. التحكم في نافذة السجل (آخر 30 سؤال)
+        document.getElementById('showHistoryBtn').addEventListener('click', (e) => {
+            e.stopPropagation(); // منع التقليب
+            const historyList = document.getElementById('historyList');
+            historyList.innerHTML = ''; // تنظيف القائمة القديمة
+
+            if (historyArray.length === 0) {
+                historyList.innerHTML = '<li>مفيش أسئلة اتعرضت لسه! ابدأ اللعب الأول.</li>';
+            } else {
+                historyArray.forEach((q, index) => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<span class="num">${index + 1}-</span> ${q}`;
+                    historyList.appendChild(li);
+                });
+            }
+            document.getElementById('historyModal').style.display = 'flex';
+        });
+
+        document.getElementById('closeHistoryBtn').addEventListener('click', () => {
+            document.getElementById('historyModal').style.display = 'none';
+        });
+
+
+        // 6. التحقق من الباسورد (#ZMsd42d*)
         document.getElementById('checkPassBtn').addEventListener('click', () => {
             const passInput = document.getElementById('adminPassword').value;
             if (btoa(passInput) === "I1pNc2Q0MmQq") {
@@ -285,7 +450,7 @@
             }
         });
 
-        // 5. حل المشكلة: إضافة الأسئلة وفصلها كل سؤال لوحده
+        // 7. إضافة الأسئلة وفصلها كل سؤال لوحده
         document.getElementById('addTopicBtn').addEventListener('click', () => {
             const newTopicText = document.getElementById('newQuestion').value;
             
@@ -315,7 +480,7 @@
             }
         });
 
-        // 6. تفعيل زرار تصدير الكل (JSON)
+        // 8. تفعيل زرار تصدير الكل (JSON)
         document.getElementById('exportBtn').addEventListener('click', () => {
             if (topicsArray.length === 0) {
                 alert("مفيش أسئلة في السيرفر عشان تصدرها!");
@@ -331,7 +496,7 @@
             downloadAnchorNode.remove();
         });
 
-        // 7. تفعيل زرار استيراد (JSON)
+        // 9. تفعيل زرار استيراد (JSON)
         document.getElementById('importBtn').addEventListener('click', () => {
             document.getElementById('fileInput').click(); // بيفتح شاشة اختيار الملف
         });
@@ -364,19 +529,20 @@
             e.target.value = ''; // بنفضي الخانة عشان لو حبيت تستورد نفس الملف تاني
         });
 
-        // 8. تفعيل زرار مسح كل الأسئلة
+        // 10. تفعيل زرار مسح كل الأسئلة
         document.getElementById('deleteAllBtn').addEventListener('click', () => {
             // بنعمل رسالة تأكيد عشان متتمسحش بالغلط
             if (confirm("أنت متأكد إنك عايز تمسح كل الأسئلة من السيرفر نهائياً؟")) {
                 remove(ref(db, 'topics')).then(() => {
                     alert("تم مسح كل الأسئلة بنجاح!");
+                    document.getElementById('topic').innerText = "قاعدة البيانات فاضية، افتح الداش بورد وضيف أسئلة!";
                 }).catch((error) => {
                     alert("حصلت مشكلة في المسح: " + error.message);
                 });
             }
         });
 
-        // 9. زراير القفل
+        // 11. زراير القفل للوحة التحكم
         document.getElementById('closeAuthBtn').addEventListener('click', () => {
             document.getElementById('authModal').style.display = 'none';
             document.getElementById('adminPassword').value = '';
